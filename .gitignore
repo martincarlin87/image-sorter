@@ -1,0 +1,10 @@
+# executables
+
+# mac
+image-sorter
+
+# windows
+image-sorter.exe
+
+# build files
+assets.go
