@@ -62,7 +62,6 @@ func Test(w http.ResponseWriter, request *http.Request) {
 	if _, err := w.Write(buffer.Bytes()); err != nil {
 		log.Println("Error")
 	}
-	
 }
 
 func Welcome(writer http.ResponseWriter, request *http.Request) {
