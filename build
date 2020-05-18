@@ -1,7 +1,11 @@
 #!/bin/bash
 set -ex
 if [ ! -f "image-sorter" ]; then
+    go get -u github.com/go-bindata/go-bindata
 	go get github.com/gorilla/mux
 fi
 
-go build -o image-sorter main.go
+BINDATAPATH="$(go env | grep "GOPATH" | sed --expression='s/GOPATH=//g' | sed --expression='s/"//g')/bin/go-bindata"
+"$BINDATAPATH" -o assets.go assets
+
+go build -o image-sorter assets.go imagesorter.go main.go
