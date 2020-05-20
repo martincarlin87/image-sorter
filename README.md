@@ -8,6 +8,14 @@
 go build
 ```
 
+## Dev
+
+This will regenerate the assets, build the app and launch the executable in debug mode:
+
+```bash
+go-bindata -o assets.go assets && go build && ./image-sorter -debug
+```
+
 ## Run
 
 ```bash

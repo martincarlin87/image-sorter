@@ -29,8 +29,16 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", Welcome)
-	router.HandleFunc("/test", Test)
-	// router.HandleFunc("/{name}", Test)
+	router.HandleFunc("/submit", Submit).Methods("POST")
+
+	// Assets
+	router.HandleFunc("/assets/alpine.js", Alpine)
+	router.HandleFunc("/assets/dms2dec.js", Dms2Dec)
+	router.HandleFunc("/assets/exif-js.js", Exif)
+	router.HandleFunc("/assets/jquery-3.5.1.min.js", JQuery)
+	router.HandleFunc("/assets/sweetalert2.min.css", SweetAlertCss)
+	router.HandleFunc("/assets/sweetalert2.min.js", SweetAlertJs)
+	router.HandleFunc("/assets/tailwind.min.css", Tailwind)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", apiHost, apiPort),
@@ -47,15 +55,13 @@ func main() {
 	}
 }
 
-func Test(w http.ResponseWriter, request *http.Request) {
+func Submit(w http.ResponseWriter, request *http.Request) {
 
-	vars := mux.Vars(request)
+	log.Println("Submit()")
 
-	log.Println("Test()")
-	log.Println(vars["name"])
 	buffer := new(bytes.Buffer)
 
-	ImageSorterTest(buffer, vars["name"])
+	ImageSorterSubmit(buffer, request)
 
 	w.Header().Set("Content-Length", strconv.Itoa(len(buffer.Bytes())))
 
@@ -69,3 +75,44 @@ func Welcome(writer http.ResponseWriter, request *http.Request) {
 	b, _ := Asset("assets/index.html")
 	writer.Write(b)
 }
+
+// Assets
+func Alpine(writer http.ResponseWriter, request *http.Request) {
+	b, _ := Asset("assets/alpine.js")
+	writer.Write(b)
+}
+
+func Dms2Dec(writer http.ResponseWriter, request *http.Request) {
+	b, _ := Asset("assets/dms2dec.js")
+	writer.Write(b)
+}
+
+func Exif(writer http.ResponseWriter, request *http.Request) {
+	b, _ := Asset("assets/exif-js.js")
+	writer.Write(b)
+}
+
+func JQuery(writer http.ResponseWriter, request *http.Request) {
+	b, _ := Asset("assets/jquery-3.5.1.min.js")
+	writer.Write(b)
+}
+
+func SweetAlertCss(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("Content-Type", "text/css")
+
+	b, _ := Asset("assets/sweetalert2.min.css")
+	writer.Write(b)
+}
+
+func SweetAlertJs(writer http.ResponseWriter, request *http.Request) {
+	b, _ := Asset("assets/sweetalert2.min.js")
+	writer.Write(b)
+}
+
+func Tailwind(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("Content-Type", "text/css")
+
+	b, _ := Asset("assets/tailwind.min.css")
+	writer.Write(b)
+}
+
