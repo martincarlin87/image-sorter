@@ -1,6 +1,11 @@
 # Image Sorter
 
+## Dependencies
 
+```
+go get github.com/gorilla/mux
+go get -u github.com/go-bindata/go-bindata/..
+```
 
 ## Build
 
