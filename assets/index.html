@@ -155,8 +155,8 @@
 
                         <div class="flex items-center justify-between mb-4 bg-white">
 
-                            <div class="flex items-center justify-between mb-4">
-                                <form id="data-form" class="w-full max-w-sm py-8">
+                            <div class="flex items-center justify-between w-full mb-4">
+                                <form id="data-form" class="w-1/2 py-8">
 
                                     <div class="md:flex md:items-center mb-6">
                                         <div class="md:w-1/3">
@@ -178,6 +178,33 @@
                                             </div>
                                             <div class="md:w-2/3">
                                                 <input type="file" multiple name="images" accept=".jpg" class="appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-purple-500">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-container hidden">
+                                        <div class="md:flex md:items-center mb-6">
+                                            <div class="md:w-1/3">
+                                                <label class="block text-gray-500 font-bold md:text-right mb-1 md:mb-0 pr-4" for="file">
+                                                    Distance Threshold (metres)
+                                                </label>
+                                            </div>
+                                            <div class="md:w-2/3">
+                                                <input type="number" min="20" max="500" step="10" name="threshold" class="appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-purple-500" value="100">
+
+                                                <datalist id="tickmarks">
+                                                    <option value="0" label="0%"></option>
+                                                    <option value="10"></option>
+                                                    <option value="20"></option>
+                                                    <option value="30"></option>
+                                                    <option value="40"></option>
+                                                    <option value="50" label="50%"></option>
+                                                    <option value="60"></option>
+                                                    <option value="70"></option>
+                                                    <option value="80"></option>
+                                                    <option value="90"></option>
+                                                    <option value="100" label="100%"></option>
+                                                </datalist>
                                             </div>
                                         </div>
                                     </div>
@@ -232,7 +259,7 @@
 
                     if ($submitButton.attr('data-submitted') == 0) {
                         $submitButton.attr('data-submitted', 1);
-                        handleFormSubmit($form);
+                        handleFormSubmit();
                     }
                     
 
@@ -242,6 +269,7 @@
                 $('input[type="file"][name="images"]').on('change', function() {
                     images = [];
                     $('#results').addClass('hidden').empty();
+                    $('button[data-submitted="1"]').attr('data-submitted', 0);
                     const $input = $(this);
                     handleImages($input);
                 });
@@ -249,57 +277,94 @@
                 $('input[type="file"][name="kml"]').on('change', function() {
                     locations = [];
                     $('#results').addClass('hidden').empty();
+                    $('button[data-submitted="1"]').attr('data-submitted', 0);
                     const $input = $(this);
                     handleKml($input);
                 });
 
                 $(document).on('click', 'button#sort-images', function() {
-                    sortImages();
+
+                    const $submitButton = $(this);
+
+                    if ($submitButton.attr('data-submitted') == 0) {
+                        $submitButton.attr('data-submitted', 1);
+                        sortImages();
+                    }
+                    
+                });
+
+                $(document).on('click', 'button.image-name', function() {
+
+                    const $button = $(this);
+                    const name = $button.attr('data-name');
+
+                    editImage(name);
+                    
                 });
 
             }
 
-            function handleFormSubmit($form) {
+            function handleFormSubmit() {
                 getDistances();
                 displayResults();
             }
 
             function handleImages($input) {
 
+                // keep a note of the start time
+                var start = performance.now();
+
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Checking Images',
+                    html: `Checking GPS data of images, this may take a few seconds depending on the number of images selected`,
+                    showConfirmButton: false,
+                    heightAuto: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+
                 const files = $input[0].files;
 
-                for (let i = 0; i < files.length; i++) {
-
-                    EXIF.getData(files[i], function() {
-                        // console.log(EXIF.pretty(this));
-
-                        let location = getLatLong(this.exifdata);
-
-                        let image = {
-                            name: this.name,
-                            lat: location.lat,
-                            long: location.long
-                        }
-
-                        images.push(image);
-
-                        if (files.length === i + 1) {
-                            // finished processing images
-                            if (images.length > 0) {
-                                $('form#data-form button[type="submit"]').closest('.form-container').removeClass('hidden');
-                            } else {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'No Images',
-                                    html: 'There were no images selected',
-                                    showConfirmButton: true,
-                                    heightAuto: false
-                                });
-                            }
-                        }
+                if (files.length === 0) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'No Images',
+                        html: 'There were no images selected',
+                        showConfirmButton: true,
+                        heightAuto: false
                     });
-                }
+                } else {
 
+                    for (let i = 0; i < files.length; i++) {
+
+                        EXIF.getData(files[i], function() {
+                            // console.log(EXIF.pretty(this));
+
+                            let location = getLatLong(this.exifdata);
+
+                            let image = {
+                                name: this.name,
+                                lat: location.lat,
+                                long: location.long
+                            }
+
+                            images.push(image);
+
+                            if (files.length === i + 1) {
+                                // finished processing images
+                                var end = performance.now();
+                                var wait = 2000 - (end - start);
+
+                                // we don't want the alert to disappear too quickly before having a chance to read it
+                                setTimeout(function() {
+                                    $('form#data-form button[type="submit"]').closest('.form-container').removeClass('hidden');
+                                    Swal.close();
+                                }, wait);
+                            }
+                        });
+                    }
+                }
             }
 
             function handleKml($input) {
@@ -316,36 +381,45 @@
                  // get image location from exif data
                 // sometimes it is an object with a numerator and denominator, sometimes it's a number
 
-                if (typeof exifData.GPSLatitude[0] === 'object' && exifData.GPSLatitude[0] !== null) {
-                    var latDegree = `${exifData.GPSLatitude[0].numerator}/${exifData.GPSLatitude[0].denominator}`;
-                    var latMinute = `${exifData.GPSLatitude[1].numerator}/${exifData.GPSLatitude[1].denominator}`;
-                    var latSecond = `${exifData.GPSLatitude[2].numerator}/${exifData.GPSLatitude[2].denominator}`;
+                if (exifData.GPSLatitude == undefined || exifData.GPSLatitude == undefined) {
+                    return { 'lat': null, 'long': null };
                 } else {
-                    var latDegree = `${exifData.GPSLatitude[0]}/1`;
-                    var latMinute = `${exifData.GPSLatitude[1]}/1`;
-                    var latSecond = `${exifData.GPSLatitude[2]}/1`;
+                    if (typeof exifData.GPSLatitude[0] === 'object') {
+                        var latDegree = `${exifData.GPSLatitude[0].numerator}/${exifData.GPSLatitude[0].denominator}`;
+                        var latMinute = `${exifData.GPSLatitude[1].numerator}/${exifData.GPSLatitude[1].denominator}`;
+                        var latSecond = `${exifData.GPSLatitude[2].numerator}/${exifData.GPSLatitude[2].denominator}`;
+                    } else {
+                        var latDegree = `${exifData.GPSLatitude[0]}/1`;
+                        var latMinute = `${exifData.GPSLatitude[1]}/1`;
+                        var latSecond = `${exifData.GPSLatitude[2]}/1`;
+                    }
+
+                    var latDirection = exifData.GPSLatitudeRef;
+
+                    if (exifData.GPSLatitude == null) {
+                        var lonDegree = null;
+                        var lonMinute = null;
+                        var lonSecond = null;
+                    } else if (typeof exifData.GPSLongitude[0] === 'object' && exifData.GPSLongitude[0] !== null) {
+                        var lonDegree = `${exifData.GPSLongitude[0].numerator}/${exifData.GPSLongitude[0].denominator}`;
+                        var lonMinute = `${exifData.GPSLongitude[1].numerator}/${exifData.GPSLongitude[1].denominator}`;
+                        var lonSecond = `${exifData.GPSLongitude[2].numerator}/${exifData.GPSLongitude[2].denominator}`;
+                    } else {
+                        var lonDegree = `${exifData.GPSLongitude[0]}/1`;
+                        var lonMinute = `${exifData.GPSLongitude[1]}/1`;
+                        var lonSecond = `${exifData.GPSLongitude[2]}/1`;
+                    }
+
+                    var lonDirection = exifData.GPSLongitudeRef;
+
+
+                    // do the conversion from degrees, minutes seconds to decimal values
+                    var latlon = convertDMSToDD(`${latDegree}, ${latMinute}, ${latSecond}`, latDirection, `${lonDegree}, ${lonMinute}, ${lonSecond}`, lonDirection);
+                    var latFinal = latlon[0];
+                    var lonFinal = latlon[1];
+
                 }
 
-                var latDirection = exifData.GPSLatitudeRef;
-
-                if (typeof exifData.GPSLongitude[0] === 'object' && exifData.GPSLongitude[0] !== null) {
-                    var lonDegree = `${exifData.GPSLongitude[0].numerator}/${exifData.GPSLongitude[0].denominator}`;
-                    var lonMinute = `${exifData.GPSLongitude[1].numerator}/${exifData.GPSLongitude[1].denominator}`;
-                    var lonSecond = `${exifData.GPSLongitude[2].numerator}/${exifData.GPSLongitude[2].denominator}`;
-                } else {
-                    var lonDegree = `${exifData.GPSLongitude[0]}/1`;
-                    var lonMinute = `${exifData.GPSLongitude[1]}/1`;
-                    var lonSecond = `${exifData.GPSLongitude[2]}/1`;
-                }
-
-                var lonDirection = exifData.GPSLongitudeRef;
-
-                // do the conversion from degrees, minutes seconds to decimal values
-                var latlon = convertDMSToDD(`${latDegree}, ${latMinute}, ${latSecond}`, latDirection, `${lonDegree}, ${lonMinute}, ${lonSecond}`, lonDirection);
-                var latFinal = latlon[0];
-                var lonFinal = latlon[1];
-
-                // Update File Meta Data
                 return { 'lat': latFinal, 'long': lonFinal };
             }
 
@@ -435,6 +509,8 @@
 
                     if (locations.length > 0) {
                         $('input[type="file"][name="images"]').closest('.form-container').removeClass('hidden');
+                        $('input[type="number"][name="threshold"]').closest('.form-container').removeClass('hidden');
+                        
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -457,7 +533,7 @@
                       c(lat1 * p) * c(lat2 * p) * 
                       (1 - c((lon2 - lon1) * p)) / 2;
 
-                return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
+                return (12742 * 1000) * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
             }
 
             function getDistances() {
@@ -465,17 +541,26 @@
                 for (let i = 0; i < images.length; i++) {
                     let image = images[i];
 
-                    let closest = locations.reduce(function(a, b) {
-                        return distance(image.lat, image.long, a.lat, a.long) < distance(image.lat, image.long, b.lat, b.long) ? a : b
-                    });
+                    if (image.lat != null && image.long != null) {
 
-                    // update image
-                    image.location = closest.name;
+                        let closest = locations.reduce(function(a, b) {
+                            return distance(image.lat, image.long, a.lat, a.long) < distance(image.lat, image.long, b.lat, b.long) ? a : b
+                        });
 
-                    // update location
-                    closest.images.push(image.name);
+                        // update image
+                        image.location = closest.name;
+                        image.distance = distance(image.lat, image.long, closest.lat, closest.long);
+
+                        // update location
+                        closest.images.push({
+                            name: image.name,
+                            distance: image.distance
+                        });
+                    } else {
+                        // update image
+                        image.location = null;
+                    }
                 }
-
             }
 
             function displayResults() {
@@ -484,16 +569,52 @@
 
                 let results = ``;
 
+                const noGpsImages = images.filter(function(image) {
+                    return image.location === null;
+                });
+
+                const threshold = parseInt($('input[type="number"][name="threshold"]').val());
+
+                if (noGpsImages.length > 0) {
+                    results += `
+                        <div class="mb-4 border border-color-gray-600 rounded">
+                            <div class="flex items-center justify-between bg-red-200 pl-3 pr-2 py-3 w-full rounded rounded-b-none text-gray-800 font-bold cursor-pointer hover:bg-red-300">
+                                IMAGES WITH NO GPS <span class="ml-3 rounded px-2 py-1 text-center bg-red-400 text-white">${noGpsImages.length}</span>
+                            </div>
+                            <div class="p-3">
+                                <p class="text-gray-600 mb-3">
+                                    <ul>
+                                        ${noGpsImages.map(image => `<li class="mb-2"><button class="inline-block text-left w-48 bg-transparent border-0 image-name" data-name="${image.name}">${image.name}</button></li>`).join('')}
+                                    </ul>
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                }
+
+
+
                 for (let i = 0; i < locations.length; i++) {
                     results += `
                         <div class="mb-4 border border-color-gray-600 rounded">
-                            <div class="flex items-center justify-between bg-gray-200 pl-3 pr-2 py-3 w-full rounded text-gray-600 font-bold cursor-pointer hover:bg-gray-300">
+                            <div class="flex items-center justify-between bg-gray-200 pl-3 pr-2 py-3 w-full rounded rounded-b-none text-gray-600 font-bold cursor-pointer hover:bg-gray-300">
                                 ${locations[i].name} <span class="ml-3 rounded px-2 py-1 text-center bg-blue-400 text-white">${locations[i].images.length}</span>
                             </div>
                             <div class="p-3">
                                 <p class="text-gray-600 mb-3">
                                     <ul>
-                                        ${locations[i].images.length === 0 ? `<li class="mb-2 text-gray-600">No images</li>` : locations[i].images.map(image => `<li class="mb-2">${image}</li>`).join('')}
+                                        ${locations[i].images.length === 0 ? `
+                                            <li class="mb-2 py-2 px-2 text-red-400">No images</li>` :
+                                            locations[i].images.map(image => `
+                                                <li class="mb-2 py-2 px-2 hover:bg-blue-200">
+                                                    <button class="inline-block text-left w-48 bg-transparent border-0 text-gray-800 image-name" data-name="${image.name}">
+                                                        ${image.name}
+                                                    </button>
+                                                    <span class="ml-3 ${(image.distance > threshold || image.distance === null) ? `text-red-600` : `text-gray-600`}">
+                                                        ${image.distance === null ? `Unknown` : `${new Intl.NumberFormat('en-GB', { maximumSignificantDigits: 2 }).format(image.distance)} metres`}
+                                                    </span>
+                                                </li>
+                                            `).join('')}
                                     </ul>
                                 </p>
                             </div>
@@ -503,10 +624,9 @@
 
                 results += `
                     <div class="mt-8">
-                        <button id="sort-images" type="button" class="shadow bg-purple-500 hover:bg-purple-400 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded">Sort Images</button>
+                        <button id="sort-images" type="button" data-submitted="0" class="shadow bg-purple-500 hover:bg-purple-400 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded">Sort Images</button>
                     </div>
                 `;
-
 
                 $('#results').html(results);
             }
@@ -520,6 +640,22 @@
                     formData.append(`location[${i}]`, images[i].location);
                 }
 
+                // don't show image edit popup after submission
+                $('button.edit-image').removeClass('edit-image');
+
+                // keep a note of the start time
+                var start = performance.now();
+
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sorting Images',
+                    html: `Currently sorting images...`,
+                    showConfirmButton: false,
+                    heightAuto: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+
                 $.ajax({
                     url: '/submit',
                     type: 'post',
@@ -528,13 +664,115 @@
                     processData: false,
                     contentType: false
                 }).done(function(data) {
-                    console.log(data);
+                    if (data === 'success') {
+
+                        var end = performance.now();
+                        var wait = 2000 - (end - start);
+
+                        // we don't want the alert to disappear too quickly before having a chance to read it
+                        setTimeout(function() {
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Images Sorted!',
+                                html: `Images have been sorted in to the <code>output</code> directory`,
+                                showConfirmButton: true,
+                                heightAuto: false
+                            });
+                        }, wait);
+                    }
                 });
 
             }
 
-        </script>
+            function editImage(name) {
 
+                const image = images.filter(function(image) {
+                    return image.name === name;
+                })[0];
+
+                var oldLocationName = image.location;
+
+                var locationOptions = {};
+
+                for (let i = 0; i < locations.length; i++) {
+                    let name =  locations[i].name
+                    locationOptions[name] = name;
+                }
+
+                (async () => {
+
+                    const { value: location } = await Swal.fire({
+                        title: 'Select field validation',
+                        input: 'select',
+                        inputOptions: locationOptions,
+                        inputPlaceholder: 'Select a location',
+                        showCancelButton: true,
+                        heightAuto: false,
+                        inputValidator: (value) => {
+                            return new Promise((resolve) => {
+             
+                                if (value === '') {
+                                    resolve('You need to select a location');
+                                } else if (value === image.location) {
+                                    resolve('The image is already tagged against this location');
+                                } else {
+                                    resolve();
+                                }
+                                
+                            })
+                        }
+                    })
+
+                    if (location) {
+                        
+                        // update locations - old and new, unless it was untagged
+
+                        console.log(oldLocationName);
+
+                        if (oldLocationName !== null) {
+                            var oldLocation = locations.filter(function(x) {
+                                return x.name === oldLocationName;
+                            })[0];
+                        }
+
+                        let newLocation = locations.filter(function(x) {
+                            return x.name === location;
+                        })[0];
+
+                        // update image
+                        image.location = newLocation.name;
+
+                        if (oldLocationName === null) {
+                            image.distance = null;
+                        } else {
+                            image.distance = distance(image.lat, image.long, newLocation.lat, newLocation.long);
+                        }
+
+                        // update new location
+                        newLocation.images.push({
+                            name: image.name,
+                            distance: image.distance
+                        });
+
+                        if (oldLocationName !== null) {
+                            // remove image from old location images array by filtering it out
+                            let oldLocationImages = oldLocation.images.filter(function(x) {
+                                return x.name !== image.name;
+                            });
+
+                            oldLocation.images = oldLocationImages;
+                        }
+
+                        Swal.fire(`Image location has been updated to ${location}`);
+
+                        // redraw results
+                        displayResults();
+                    }
+                })()
+            }
+
+        </script>
 
     </body>
 </html>
