@@ -7,6 +7,8 @@ import (
 	"log"
 	"github.com/gorilla/mux"
 	"net/http"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"time"
 )
@@ -49,10 +51,35 @@ func main() {
 
 	fmt.Printf("Starting Image Sorter on http://%s:%s\n", apiHost, apiPort)
 
+	url := "http://localhost:9090"
+
+	openUrl(url);
+
 	err := srv.ListenAndServe()
+
 	if err != nil {
 		panic(err)
 	}
+
+}
+
+func openUrl(url string) error {
+    var cmd string
+    var args []string
+
+    switch runtime.GOOS {
+    	case "windows":
+        	cmd = "cmd"
+        	args = []string{"/c", "start"}
+    	case "darwin":
+        	cmd = "open"
+    	default: // "linux", "freebsd", "openbsd", "netbsd"
+        	cmd = "xdg-open"
+    }
+
+    args = append(args, url)
+    
+    return exec.Command(cmd, args...).Start()
 }
 
 func Submit(w http.ResponseWriter, request *http.Request) {
