@@ -17,7 +17,7 @@ func ImageSorterSubmit(buffer *bytes.Buffer, request *http.Request) {
     // remove`output` directory
 	os.RemoveAll("./output")
 
-    request.ParseMultipartForm(1024 * 1024 * 16);
+    request.ParseMultipartForm(1024 * 1024 * 16)
 
     i := 0
 
@@ -27,16 +27,22 @@ func ImageSorterSubmit(buffer *bytes.Buffer, request *http.Request) {
     	image := request.FormValue("image[" + strconv.Itoa(i) + "]")
     	location := request.FormValue("location[" + strconv.Itoa(i) + "]")
 
-		log.Println(image);
-		log.Println(location);
+    	// keep images with no GPS Data in an `unsorted` directory
+    	if location == "" || location == "null" {
+    		location = "unsorted"
+    	}
+
+		log.Println(image)
+		log.Println(location)
 
 		sortImage(image, location)
 
 		i++
 	}
 
-	log.Println("TEST")
-    buffer.WriteString("my response")
+	log.Println("DONE!")
+
+    buffer.WriteString("success")
 }
 
 func sortImage(image string, directory string) bool {
@@ -46,7 +52,7 @@ func sortImage(image string, directory string) bool {
 	os.MkdirAll(newpath, os.ModePerm)
 
 	// https://shapeshed.com/copy-a-file-in-go/
-	from, err := os.Open("./" + image)
+	from, err := os.Open(filepath.Join(".", "input", image))
 
 	if err != nil {
 	    log.Fatal(err)
