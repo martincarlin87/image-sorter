@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
     "log"
     "net/http"
@@ -13,6 +14,13 @@ import (
 
 func ImageSorterSubmit(buffer *bytes.Buffer, request *http.Request) {
     log.Println("ImageSorterSubmit()")
+
+    // remove unsorted directory
+    unsortedpath := filepath.Join(".", "output", "unsorted")
+    os.RemoveAll(unsortedpath)
+
+    thresholdpath := filepath.Join(".", "output", "outwith_threshold")
+    os.RemoveAll(thresholdpath)
 
     request.ParseMultipartForm(1024 * 1024 * 16)
 
@@ -42,37 +50,39 @@ func ImageSorterSubmit(buffer *bytes.Buffer, request *http.Request) {
     		lines = append(lines, line)
     	}
 
+    	path := ""
 
     	// keep images with no GPS Data in an `unsorted` directory
     	if location == "" || location == "null" {
-    		location = "unsorted"
+    		path = unsortedpath
     	} else if (ignore) {
     		// image is too far from the structure, sort in to a separate directory
-    		location = "outwith_threshold"
+    		path = thresholdpath
+    	} else {
+    		path = filepath.Join(".", "output", line, location)
     	}
 
-    	fmt.Println("\n---")
+    	fmt.Println("\n")
 		log.Println(image)
 		log.Println(location)
 		log.Println(line)
-		fmt.Println("\n---")
+		fmt.Println("\n")
 
-		sortImage(image, location, line)
+		sortImage(image, path)
 
 		i++
 	}
 
-	log.Println("\n")
+	fmt.Println("\n")
 	log.Println("DONE!")
 
     buffer.WriteString("success")
 }
 
-func sortImage(image string, directory string, line string) bool {
+func sortImage(image string, path string) bool {
 
 	// create the directory if it doesn't exist
-	newpath := filepath.Join(".", "output", line, directory)
-	os.MkdirAll(newpath, os.ModePerm)
+	os.MkdirAll(path, os.ModePerm)
 
 	// https://shapeshed.com/copy-a-file-in-go/
 	from, err := os.Open(filepath.Join(".", "input", image))
@@ -83,7 +93,7 @@ func sortImage(image string, directory string, line string) bool {
 	
 	defer from.Close()
 
-	to, err := os.OpenFile(newpath + "/" + image, os.O_RDWR|os.O_CREATE, 0666)
+	to, err := os.OpenFile(path + "/" + image, os.O_RDWR|os.O_CREATE, 0666)
 	
 	if err != nil {
 	    log.Fatal(err)
