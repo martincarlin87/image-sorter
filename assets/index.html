@@ -744,6 +744,8 @@
                         // we don't want the alert to disappear too quickly before having a chance to read it
                         setTimeout(function() {
 
+                            Swal.close();
+
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Images Sorted!',
