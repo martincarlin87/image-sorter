@@ -12,6 +12,10 @@
             [x-cloak] {
                 display: none;
             }
+
+            .custom-label input:checked + svg {
+                display: block !important;
+            }
         </style>
     </head>
     <body class="antialiased bg-gray-200">
@@ -191,20 +195,25 @@
                                             </div>
                                             <div class="md:w-2/3">
                                                 <input type="number" min="20" max="500" step="10" name="threshold" class="appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-purple-500" value="100">
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                                <datalist id="tickmarks">
-                                                    <option value="0" label="0%"></option>
-                                                    <option value="10"></option>
-                                                    <option value="20"></option>
-                                                    <option value="30"></option>
-                                                    <option value="40"></option>
-                                                    <option value="50" label="50%"></option>
-                                                    <option value="60"></option>
-                                                    <option value="70"></option>
-                                                    <option value="80"></option>
-                                                    <option value="90"></option>
-                                                    <option value="100" label="100%"></option>
-                                                </datalist>
+                                    <div class="form-container hidden">
+                                        <div class="md:flex md:items-center mb-6">
+                                            <div class="md:w-1/3">
+                                                <label class="block text-gray-500 font-bold md:text-right mb-1 md:mb-0 pr-4" for="file">
+                                                    Ignore Images Outwith Threshold
+                                                </label>
+                                            </div>
+                                            <div class="md:w-2/3">
+                                                <label class="custom-label flex">
+                                                      <div class="bg-white shadow w-6 h-6 p-1 flex justify-center items-center mr-2">
+                                                        <input type="checkbox" class="hidden" name="ignore" checked>
+                                                        <svg class="hidden w-4 h-4 text-green-600 pointer-events-none" viewBox="0 0 172 172"><g fill="none" stroke-width="none" stroke-miterlimit="10" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode:normal"><path d="M0 172V0h172v172z"/><path d="M145.433 37.933L64.5 118.8658 33.7337 88.0996l-10.134 10.1341L64.5 139.1341l91.067-91.067z" fill="currentColor" stroke-width="1"/></g></svg>
+                                                      </div>
+                                                      <span class="select-none"></span>
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
@@ -214,7 +223,7 @@
                                             <div class="md:w-1/3"></div>
                                                 <div class="md:w-2/3">
                                                 <button class="shadow bg-purple-500 hover:bg-purple-400 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded" type="submit" data-submitted="0">
-                                                    Submit
+                                                    Show Sorting Results
                                                 </button>
                                             </div>
                                         </div>
@@ -305,8 +314,30 @@
             }
 
             function handleFormSubmit() {
+
+                // keep a note of the start time
+                var start = performance.now();
+
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sorting',
+                    html: `Sorting images, this may take a few seconds depending on the number of images selected`,
+                    showConfirmButton: false,
+                    heightAuto: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+
                 getDistances();
                 displayResults();
+
+                var end = performance.now();
+                var wait = 1500 - (end - start);
+
+                // we don't want the alert to disappear too quickly before having a chance to read it
+                setTimeout(function() {
+                    Swal.close();
+                }, wait);
             }
 
             function handleImages($input) {
@@ -354,7 +385,7 @@
                             if (files.length === i + 1) {
                                 // finished processing images
                                 var end = performance.now();
-                                var wait = 2000 - (end - start);
+                                var wait = 1500 - (end - start);
 
                                 // we don't want the alert to disappear too quickly before having a chance to read it
                                 setTimeout(function() {
@@ -378,7 +409,7 @@
             }
 
             function getLatLong(exifData) {
-                 // get image location from exif data
+                // get image location from exif data
                 // sometimes it is an object with a numerator and denominator, sometimes it's a number
 
                 if (exifData.GPSLatitude == undefined || exifData.GPSLatitude == undefined) {
@@ -494,13 +525,27 @@
                         });
 
                         return false;
+                    } else if (!json.kml.Document.hasOwnProperty('Folder')) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid KML',
+                            html: 'Could not find line data',
+                            showConfirmButton: true,
+                            heightAuto: false
+                        });
+
+                        return false;
                     }
+
+                    // get name of line
+                    let line = json.kml.Document.Folder.name;
 
                     for (let i = 0; i < json.kml.Document.Folder.Placemark.length; i++) {
                         let location = {
                             name: json.kml.Document.Folder.Placemark[i].name,
                             lat: json.kml.Document.Folder.Placemark[i].LookAt.latitude,
                             long: json.kml.Document.Folder.Placemark[i].LookAt.longitude,
+                            line: line,
                             images: []
                         }
 
@@ -510,6 +555,7 @@
                     if (locations.length > 0) {
                         $('input[type="file"][name="images"]').closest('.form-container').removeClass('hidden');
                         $('input[type="number"][name="threshold"]').closest('.form-container').removeClass('hidden');
+                        $('input[type="checkbox"][name="ignore"]').closest('.form-container').removeClass('hidden');
                         
                     } else {
                         Swal.fire({
@@ -549,6 +595,7 @@
 
                         // update image
                         image.location = closest.name;
+                        image.line = closest.line;
                         image.distance = distance(image.lat, image.long, closest.lat, closest.long);
 
                         // update location
@@ -629,19 +676,42 @@
                 `;
 
                 $('#results').html(results);
+
+                // allow form to be re-submitted, i.e. options have changed
+                const $form = $('#data-form');
+                const $submitButton = $form.find('button[type="submit"]');
+
+                $submitButton.attr('data-submitted', 0);
             }
 
             function sortImages() {
+
+                const $checkbox = $('input[type="checkbox"][name="ignore"]');
+                const threshold = $('input[type="number"][name="threshold"]').val();
 
                 var formData = new FormData();
 
                 for (let i = 0; i < images.length; i++) {
                     formData.append(`image[${i}]`, images[i].name);
                     formData.append(`location[${i}]`, images[i].location);
-                }
+                    formData.append(`line[${i}]`, images[i].line);
 
-                // don't show image edit popup after submission
-                $('button.edit-image').removeClass('edit-image');
+                    // decide whether the image should be ignored
+                    let outwithThreshold = false;
+                    let ignore = 0;
+
+                    if (parseFloat(images[i].distance) > parseFloat(threshold)) {
+                        outwithThreshold = true;
+                    }
+
+                    if ($checkbox.is(':checked') && outwithThreshold) {
+                        console.log('checked');
+                        ignore = 1;
+                    }
+
+                    formData.append(`ignore[${i}]`, ignore);
+                    
+                }
 
                 // keep a note of the start time
                 var start = performance.now();
@@ -667,7 +737,7 @@
                     if (data === 'success') {
 
                         var end = performance.now();
-                        var wait = 2000 - (end - start);
+                        var wait = 1500 - (end - start);
 
                         // we don't want the alert to disappear too quickly before having a chance to read it
                         setTimeout(function() {
@@ -679,6 +749,11 @@
                                 showConfirmButton: true,
                                 heightAuto: false
                             });
+
+                            // allow data to be resubmitted
+                            const $button = $('button#sort-images');
+                            $button.attr('data-submitted', 0);
+
                         }, wait);
                     }
                 });
@@ -727,8 +802,6 @@
                     if (location) {
                         
                         // update locations - old and new, unless it was untagged
-
-                        console.log(oldLocationName);
 
                         if (oldLocationName !== null) {
                             var oldLocation = locations.filter(function(x) {

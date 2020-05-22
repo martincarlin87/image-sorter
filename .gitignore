@@ -9,6 +9,7 @@ image-sorter.exe
 # build files
 assets.go
 
+input
 output
 
 *.JPG
