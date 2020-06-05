@@ -543,10 +543,15 @@
                     let line = json.kml.Document.Folder.name;
 
                     for (let i = 0; i < json.kml.Document.Folder.Placemark.length; i++) {
+
+                        let coordinates = json.kml.Document.Folder.Placemark[i].Point.coordinates;
+
+                        let coordinatesArray = coordinates.split(',');
+
                         let location = {
                             name: json.kml.Document.Folder.Placemark[i].name,
-                            lat: json.kml.Document.Folder.Placemark[i].LookAt.latitude,
-                            long: json.kml.Document.Folder.Placemark[i].LookAt.longitude,
+                            lat: coordinatesArray[1],
+                            long: coordinatesArray[0],
                             line: line,
                             images: []
                         }
